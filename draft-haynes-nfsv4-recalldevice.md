@@ -149,7 +149,7 @@ references the unavailable deviceid), as described in Section 20.3
 of {{RFC8881}}.  This is less efficient but correct, and preserves
 interoperability with clients that predate this extension.
 
-# Extension to CB_LAYOUTRECALL - Recall Layout from Client {#op_CB_LAYOUTRECALL}
+# Extension to CB_LAYOUTRECALL - Recall Layout from Client
 
 The original union layoutrecall4 (see Section 20.3.1 of {{RFC8881}}) is:
 
