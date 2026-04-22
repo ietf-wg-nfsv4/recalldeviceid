@@ -251,10 +251,7 @@ There are no new security considerations beyond those in {{RFC7862}}.
 
 # IANA Considerations
 
-This document has no IANA actions.  The EXCHGID4_FLAG_SUPP_RECALL_DEVICEID
-constant and the LAYOUT4_RET_REC_DEVICEID constant are defined by this
-standards-track document, which is itself the authoritative record for
-these values.  Neither falls within a registry governed by IANA.
+This document has no IANA actions.
 
 --- back
 
