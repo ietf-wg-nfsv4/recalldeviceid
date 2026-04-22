@@ -8,7 +8,7 @@ Intended status: Standards Track                           22 April 2026
 Expires: 24 October 2026
 
 
-                 Add CB_LAYOUTRECALL_DEVICE to NFSv4.2
+               Deviceid-Scoped Layout Recall for NFSv4.2
                  draft-haynes-nfsv4-recalldevice-latest
 
 Abstract
@@ -66,8 +66,7 @@ Table of Contents
    1.  Introduction
    2.  Requirements Language
    3.  Client Capability Advertisement
-   4.  Extension to Operation 5: CB_LAYOUTRECALL - Recall Layout from
-           Client
+   4.  Extension to CB_LAYOUTRECALL - Recall Layout from Client
    5.  Extraction of XDR
    6.  Security Considerations
    7.  IANA Considerations
@@ -149,6 +148,12 @@ Table of Contents
    ///    const EXCHGID4_FLAG_SUPP_RECALL_DEVICEID = 0x02000000;
    ///
 
+   The specific bit value 0x02000000 is a placeholder.  EXCHGID4 flag
+   bit values are assigned from the reserved flag space defined in
+   Section 18.35 of [RFC8881] and are coordinated across in-flight NFSv4
+   Working Group extensions.  The final value will be confirmed during
+   Working Group Last Call.
+
    A client that sets EXCHGID4_FLAG_SUPP_RECALL_DEVICEID in its
    EXCHANGE_ID request advertises that it supports handling
    CB_LAYOUTRECALL with a LAYOUTRECALL4_DEVICEID recall type.
@@ -165,8 +170,7 @@ Table of Contents
    [RFC8881].  This is less efficient but correct, and preserves
    interoperability with clients that predate this extension.
 
-4.  Extension to Operation 5: CB_LAYOUTRECALL - Recall Layout from
-    Client
+4.  Extension to CB_LAYOUTRECALL - Recall Layout from Client
 
    The original union layoutrecall4 (see Section 20.3.1 of [RFC8881])
    is:
@@ -259,12 +263,57 @@ Table of Contents
    includes both nfs types that end with a 4, such as offset4, length4,
    etc., as well as more generic types such as uint32_t and uint64_t.
 
-   While the XDR can be appended to that from [RFC7863], the various
-   code snippets belong in their respective areas of that XDR.
+   The extracted XDR extends types that are already defined in [RFC7863]
+   rather than introducing new types.  An implementer MUST integrate the
+   extracted block into the base XDR by *replacing* the existing
+   layoutrecall_type4 enum declaration and layoutrecall4 union
+   declaration with the extended versions in this document, and by
+   adding the LAYOUT4_RET_REC_DEVICEID constant in the same file area as
+   the existing LAYOUT4_RET_REC_* constants.  Appending the extracted
+   block verbatim to the RFC 7863 XDR produces duplicate- type errors at
+   compile time.
+
+   The EXCHGID4_FLAG_SUPP_RECALL_DEVICEID constant is purely additive
+   and is added to the EXCHGID4 flag constant block without replacing
+   anything.
 
 6.  Security Considerations
 
-   There are no new security considerations beyond those in [RFC7862].
+   The extension introduced by this document inherits the Security
+   Considerations of CB_LAYOUTRECALL in Section 20.3 of [RFC8881] and of
+   NFSv4.2 in [RFC7862].  Three aspects of the deviceid-scoped recall
+   warrant explicit mention.
+
+   Blast radius:  A single CB_LAYOUTRECALL with LAYOUTRECALL4_DEVICEID
+      can cause a client to return many layouts in one callback
+      exchange.  This is not a new risk category -- LAYOUTRECALL4_FSID
+      and LAYOUTRECALL4_ALL already allow wider-scoped recalls -- but
+      administrators sizing callback-channel timeouts and client-side
+      recall-handler resources SHOULD account for the possibility that a
+      deviceid-scoped recall triggers per-layout cleanup work
+      proportional to the number of layouts that reference the deviceid.
+
+   Cross-client scope:  In deployments where a single deviceid is shared
+      across clients serving different tenants or applications, a
+      deviceid-scoped recall is cross-client by construction: every
+      client that holds a layout referencing the deviceid is recalled.
+      This is the same property as LAYOUTRECALL4_FSID and does not
+      introduce a new information-exposure surface.  Deployments that
+      prefer per-tenant failure-domain isolation MAY treat this
+      extension as an operational benefit: by assigning distinct
+      deviceids per tenant, deviceid-scoped recall becomes a per-tenant
+      operation with no cross-tenant effect.
+
+   Capability negotiation as defence in depth:  The capability flag
+      defined in Section 3 ensures that a server cannot silently change
+      the callback wire format for a client that did not opt in.  A
+      client that does not advertise EXCHGID4_FLAG_SUPP_RECALL_DEVICEID
+      continues to receive only the layoutrecall_type4 values defined in
+      [RFC8881].  A server that sends LAYOUTRECALL4_DEVICEID to a client
+      that did not advertise support is in violation of Section 6 of
+      [RFC8178]; clients that encounter such a violation MUST return
+      NFS4ERR_UNION_NOTSUPP and SHOULD log the server for operator
+      attention.
 
 7.  IANA Considerations
 
