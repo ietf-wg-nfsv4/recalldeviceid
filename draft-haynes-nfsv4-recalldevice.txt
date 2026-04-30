@@ -4,8 +4,8 @@
 
 Network File System Version 4                                  T. Haynes
 Internet-Draft                                               Hammerspace
-Intended status: Standards Track                           22 April 2026
-Expires: 24 October 2026
+Intended status: Standards Track                           30 April 2026
+Expires: 1 November 2026
 
 
                Deviceid-Scoped Layout Recall for NFSv4.2
@@ -13,14 +13,19 @@ Expires: 24 October 2026
 
 Abstract
 
-   The Parallel Network File System (pNFS) allows for the metadata
-   server to use CB_LAYOUTRECALL to recall a layout from a client by
-   file id or file system id or all.  It also allows the server to use
-   CB_NOTIFY_DEVICEID to delete a deviceid.  It does not provide a
-   mechanism for the metadata server to recall all layouts that have a
-   data file on a specific deviceid.  This document presents an
-   extension to RFC7862 to allow the server to recall layouts from
-   clients based on deviceid.
+   The Parallel Network File System (pNFS) allows the metadata server to
+   recall a layout from a client by file id, by file system id, or
+   across all of a client's layouts.  It also lets the server delete a
+   deviceid via CB_NOTIFY_DEVICEID.  It does not provide a mechanism for
+   the metadata server to recall, in a single operation, all layouts
+   that reference a specific deviceid.  This document presents an
+   extension to RFC7862 that adds a deviceid-scoped layout recall: a
+   single CB_LAYOUTRECALL operation recalls every layout a client holds
+   that references a given deviceid, leaving unrelated layouts in place.
+   Without this capability, device unavailability can trigger large
+   volumes of failed WRITE and LAYOUTERROR traffic, and administrators
+   lack a surgical way to retire a deviceid without disturbing layouts
+   that reference healthy devices.
 
 Note to Readers
 
@@ -45,7 +50,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 24 October 2026.
+   This Internet-Draft will expire on 1 November 2026.
 
 Copyright Notice
 
@@ -64,6 +69,10 @@ Copyright Notice
 Table of Contents
 
    1.  Introduction
+     1.1.  Problem 1: Traffic amplification during device
+           unavailability
+     1.2.  Problem 2: Cleanly retiring a deviceid
+     1.3.  What this document specifies
    2.  Requirements Language
    3.  Client Capability Advertisement
    4.  Extension to CB_LAYOUTRECALL - Recall Layout from Client
@@ -80,50 +89,114 @@ Table of Contents
 
    In the Network File System version 4 (NFSv4) with a Parallel NFS
    (pNFS) metadata server ([RFC8881]), there is no mechanism for the
-   metadata server to recall layouts from the client when a particular
-   deviceid (see Section 3.3.14 of [RFC8881]) either temporarily or
-   permanently is no longer available.
+   metadata server to recall layouts from a client based on the deviceid
+   (see Section 3.3.14 of [RFC8881]) those layouts reference.  The Flex
+   Files layout type ([RFC8435]) is the primary motivating use case: a
+   Flex Files layout describes data spread across multiple data servers,
+   each identified by a distinct deviceid, often deliberately deployed
+   across separate power or fault domains so that a single domain
+   failure does not lose data.
 
-   The Flex Files layout type ([RFC8435]) is a primary motivating use
-   case.  A Flex Files layout describes data spread across multiple data
-   servers, each identified by a distinct deviceid, which may reside in
-   separate power fault domains.
+   The absence of a deviceid-scoped recall has two distinct operational
+   consequences.  This section describes each, shows why the existing
+   recall and notification mechanisms are the wrong shape to address it,
+   and motivates the extension specified in the rest of the document.
 
-   One use case is when the deviceids in a layout are separated by power
-   fault domains.  Each layout might describe 3 different devices, each
-   contained in a different power fault domain.  In such a scenario, a
-   single fault domain can have the power removed and not cause the loss
-   of access to the data.  However, client I/O will be impacted as the
-   client still has to perform WRITEs (see Section 18.32 of [RFC8881])
-   to the unavailable device, send LAYOUTERRORs (see Section 15.6 of
-   [RFC7862]) to inform the metadata server of NFS4ERR_NXIO (see
-   Section 15.1.16.3 of [RFC8881]).
+1.1.  Problem 1: Traffic amplification during device unavailability
 
-   If the metadata server had the means to recall layouts by deviceid, a
-   lot of this unnecessary traffic could be eliminated.  While the
-   metadata server could use LAYOUTRECALL4_ALL to recall all of a
-   client's layouts, that would evict layouts pointing at healthy
-   devices unnecessarily.  The deviceid-specific recall is surgical:
-   only the layouts referencing the unavailable device are returned,
-   leaving unaffected layouts in place.  Similarly, while the metadata
-   server could recall affected layouts one by one via
-   LAYOUTRECALL4_FILE, that generates one RPC per file and the work can
-   instead be offloaded to the client with a single recall.
+   When a deviceid becomes unavailable -- because a power fault domain
+   has been isolated, because a device has been taken down for
+   maintenance, or because of a transient I/O failure -- clients holding
+   layouts that reference the deviceid continue to issue I/O against it.
+   Each such attempt produces a WRITE (see Section 18.32 of [RFC8881])
+   that fails with NFS4ERR_NXIO (see Section 15.1.16.3 of [RFC8881]),
+   followed by a LAYOUTERROR (see Section 15.6 of [RFC7862]) returned to
+   the metadata server.  The metadata server learns about the failure
+   once per (client, layout) pair; the network and the metadata server
+   pay for the retries.
 
-   Besides the use case above, consider if the metadata server wants to
-   set the NOTIFY4_DEVICEID_DELETE in the CB_NOTIFY_DEVICEID callback
-   (see Section 20.12 of [RFC8881]).  This flag cannot be set if a
-   layout is outstanding for a deviceid.  While the metadata server can
-   revoke all such layouts, there is no way to know that the client has
-   acknowledged that revocation and hence is still not doing I/O to
-   other data files in the layout.  The metadata server could fence
-   those layouts as well (see Section 12.5.5 of [RFC8881]), but that can
-   be an expensive operation.
+   Structurally, the wasted RPC count is approximately *2 x C x L x W*,
+   where:
+
+   *  *C* is the number of clients holding layouts that reference the
+      affected deviceid,
+
+   *  *L* is the average number of such layouts per client, and
+
+   *  *W* is the number of write attempts per layout during the
+      unavailability window.
+
+   The factor of two captures the WRITE-then-LAYOUTERROR pair generated
+   per attempt.  For a representative deployment with *C = 100*, *L =
+   50*, and a several-minute unavailability window in which each layout
+   sees *W = 1000* write attempts, the wasted RPC count is on the order
+   of *10 million*.  These numbers are illustrative order-of-magnitude
+   estimates derived from the structural relationship; deployment-
+   specific measurements are out of scope for this specification, but
+   the structural multiplier is what the extension eliminates.
+
+   A single deviceid-scoped recall delivered to each affected client
+   replaces the (C x L x W) retry traffic with a single CB_LAYOUTRECALL
+   per client plus the client-side processing to return the affected
+   layouts.
+
+   The existing recall mechanisms are the wrong shape for this problem.
+   LAYOUTRECALL4_ALL recalls every layout a client holds, including
+   layouts pointing at healthy deviceids; this fixes the traffic
+   amplification at the cost of evicting unrelated layouts and forcing
+   them to be re-issued.  LAYOUTRECALL4_FILE recalls layouts one file at
+   a time, which adds an RPC per affected file to the recovery cost; for
+   a deployment where the number of affected files is large, the per-
+   file recall traffic is itself a scaling concern.
+
+1.2.  Problem 2: Cleanly retiring a deviceid
+
+   The metadata server can signal to clients that a deviceid no longer
+   exists by setting NOTIFY4_DEVICEID_DELETE in the CB_NOTIFY_DEVICEID
+   callback (see Section 20.12 of [RFC8881]).  This flag cannot be set
+   while any layout still references the deviceid: once a delete is
+   announced, a client cannot have in-flight I/O against a deviceid that
+   no longer exists.
+
+   The result is that an administrator who wants to retire a deviceid --
+   for hardware refresh, decommission, capacity rebalancing, or removal
+   of a failed device from the namespace -- has no surgical option.  The
+   available choices are:
+
+   *  Wait for the affected layouts to expire naturally.  The wait is
+      bounded by a lease period and by the slowest client.
+
+   *  Use LAYOUTRECALL4_ALL to recall every layout from every client.
+      This evicts layouts pointing at healthy deviceids in the same
+      operation, and may produce a thundering herd of re-LAYOUTGET
+      requests once the recall completes.
+
+   *  Use LAYOUTRECALL4_FILE for every affected file.  This generates
+      one recall RPC per file and is expensive at scale.
+
+   *  Fence the deviceid (see Section 12.5.5 of [RFC8881]).  This is
+      disruptive: clients with active I/O see I/O failures rather than
+      orderly recall, and the operation may invalidate concurrent
+      legitimate I/O.
+
+   A deviceid-scoped recall provides the missing surgical option: the
+   metadata server recalls exactly the layouts referencing the to-be-
+   retired deviceid, waits for client acknowledgement, and then sends
+   CB_NOTIFY_DEVICEID with NOTIFY4_DEVICEID_DELETE.  The deviceid is
+   retired without disturbing layouts that reference other deviceids.
+
+1.3.  What this document specifies
 
    Using the process detailed in [RFC8178], the revisions in this
    document become an extension of NFSv4.2 [RFC7862].  They are built on
    top of the external data representation (XDR) [RFC4506] generated
    from [RFC7863].
+
+   The extension adds a deviceid-scoped recall to CB_LAYOUTRECALL: a
+   single callback identifies a deviceid and the client returns every
+   layout it holds that references that deviceid.  The extension closes
+   both operational gaps described above with a single new layout-recall
+   scope.
 
 2.  Requirements Language
 
@@ -147,12 +220,6 @@ Table of Contents
 
    ///    const EXCHGID4_FLAG_SUPP_RECALL_DEVICEID = 0x02000000;
    ///
-
-   The specific bit value 0x02000000 is a placeholder.  EXCHGID4 flag
-   bit values are assigned from the reserved flag space defined in
-   Section 18.35 of [RFC8881] and are coordinated across in-flight NFSv4
-   Working Group extensions.  The final value will be confirmed during
-   Working Group Last Call.
 
    A client that sets EXCHGID4_FLAG_SUPP_RECALL_DEVICEID in its
    EXCHANGE_ID request advertises that it supports handling
@@ -369,6 +436,8 @@ Acknowledgments
 
    Trond Myklebust and Paul Saab were involved in the initial
    requirements for this functionality.
+
+   Chuck Lever provided early review feedback.
 
    Brian Pawlowski and Gorry Fairhurst helped guide this process.
 
