@@ -44,9 +44,11 @@ single operation, all layouts that reference a specific
 deviceid.  This document presents an extension to RFC7862 that
 adds a deviceid-scoped layout recall: a single CB_LAYOUTRECALL
 operation recalls every layout a client holds that references a
-given deviceid, leaving unrelated layouts in place.  The
-operational consequences of the existing gap, and how the
-extension closes them, are described in the Introduction.
+given deviceid, leaving unrelated layouts in place.  Without
+this capability, device unavailability can trigger large
+volumes of failed WRITE and LAYOUTERROR traffic, and
+administrators lack a surgical way to retire a deviceid
+without disturbing layouts that reference healthy devices.
 
 --- note_Note_to_Readers
 
@@ -194,12 +196,6 @@ operation (see Section 18.35 of {{RFC8881}}):
 ///    const EXCHGID4_FLAG_SUPP_RECALL_DEVICEID = 0x02000000;
 ///
 ~~~
-
-The specific bit value 0x02000000 is a placeholder.  EXCHGID4 flag
-bit values are assigned from the reserved flag space defined in
-Section 18.35 of {{RFC8881}} and are coordinated across in-flight
-NFSv4 Working Group extensions.  The final value will be confirmed
-during Working Group Last Call.
 
 A client that sets EXCHGID4_FLAG_SUPP_RECALL_DEVICEID in its
 EXCHANGE_ID request advertises that it supports handling
