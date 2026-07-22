@@ -4,8 +4,8 @@
 
 Network File System Version 4                                  T. Haynes
 Internet-Draft                                               Hammerspace
-Intended status: Standards Track                           30 April 2026
-Expires: 1 November 2026
+Intended status: Standards Track                            22 July 2026
+Expires: 23 January 2027
 
 
                Deviceid-Scoped Layout Recall for NFSv4.2
@@ -27,13 +27,28 @@ Abstract
    lack a surgical way to retire a deviceid without disturbing layouts
    that reference healthy devices.
 
+About This Document
+
+   This note is to be removed before publishing as an RFC.
+
+   The latest revision of this draft can be found at https://ietf-wg-
+   nfsv4.github.io/recalldeviceid/draft-haynes-nfsv4-recalldevice.html.
+   Status information for this document may be found at
+   https://datatracker.ietf.org/doc/draft-haynes-nfsv4-recalldevice/.
+
+   Discussion of this document takes place on the Network File System
+   Version 4 Working Group mailing list (mailto:nfsv4@ietf.org), which
+   is archived at https://mailarchive.ietf.org/arch/browse/nfsv4/.
+   Subscribe at https://www.ietf.org/mailman/listinfo/nfsv4/.
+
+   Source for this draft and an issue tracker can be found at
+   https://github.com/ietf-wg-nfsv4/recalldeviceid.
+
 Note to Readers
 
-   Discussion of this draft takes place on the NFSv4 working group
-   mailing list (nfsv4@ietf.org), which is archived at
-   https://mailarchive.ietf.org/arch/browse/nfsv4/. Working Group
-   information can be found at https://datatracker.ietf.org/wg/nfsv4/
-   about/.
+   This is an individual submission and does not reflect Working Group
+   consensus.  The "About This Document" section above has the current
+   discussion venue, latest rendering, and source location.
 
 Status of This Memo
 
@@ -50,7 +65,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 1 November 2026.
+   This Internet-Draft will expire on 23 January 2027.
 
 Copyright Notice
 
