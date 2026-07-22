@@ -13,6 +13,14 @@ keyword: Internet-Draft
 stand_alone: yes
 pi: [toc, sortrefs, symrefs, docmapping, comments]
 
+venue:
+  group: Network File System Version 4
+  type: Working Group
+  mail: nfsv4@ietf.org
+  arch: https://mailarchive.ietf.org/arch/browse/nfsv4/
+  github: ietf-wg-nfsv4/recalldeviceid
+  latest: https://ietf-wg-nfsv4.github.io/recalldeviceid/draft-haynes-nfsv4-recalldevice.html
+
 author:
  -
     ins: T. Haynes
@@ -52,12 +60,9 @@ without disturbing layouts that reference healthy devices.
 
 --- note_Note_to_Readers
 
-Discussion of this draft takes place
-on the NFSv4 working group mailing list (nfsv4@ietf.org),
-which is archived at
-[](https://mailarchive.ietf.org/arch/browse/nfsv4/).
-Working Group information can be found at
-[](https://datatracker.ietf.org/wg/nfsv4/about/).
+This is an individual submission and does not reflect Working Group
+consensus.  The "About This Document" section above has the current
+discussion venue, latest rendering, and source location.
 
 --- middle
 
