@@ -4,8 +4,8 @@
 
 Network File System Version 4                                  T. Haynes
 Internet-Draft                                               Hammerspace
-Intended status: Standards Track                            22 July 2026
-Expires: 23 January 2027
+Intended status: Standards Track                       15 September 2026
+Expires: 19 March 2027
 
 
                Deviceid-Scoped Layout Recall for NFSv4.2
@@ -65,7 +65,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 23 January 2027.
+   This Internet-Draft will expire on 19 March 2027.
 
 Copyright Notice
 
@@ -322,7 +322,8 @@ Table of Contents
    [RFC4506] description of the extension to CB_LAYOUTRECALL.  The XDR
    description is presented in a manner that facilitates easy extraction
    into a ready-to-compile format.  To extract the machine-readable XDR
-   description, use the following shell script:
+   description, use the following shell script, which relies on the sh,
+   grep, and sed utilities as specified by [POSIX]:
 
    <CODE BEGINS>
    #!/bin/sh
@@ -437,6 +438,11 @@ Table of Contents
               <https://www.rfc-editor.org/rfc/rfc8881>.
 
 8.2.  Informative References
+
+   [POSIX]    IEEE and The Open Group, "IEEE Standard for Information
+              Technology--Portable Operating System Interface (POSIX)
+              Base Specifications, Issue 8", IEEE Std 1003.1-2024, 2024,
+              <https://standards.ieee.org/ieee/1003.1/7700/>.
 
    [RFC1813]  Callaghan, B., Pawlowski, B., and P. Staubach, "NFS
               Version 3 Protocol Specification", RFC 1813,
