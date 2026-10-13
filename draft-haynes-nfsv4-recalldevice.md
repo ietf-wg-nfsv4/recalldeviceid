@@ -350,7 +350,6 @@ error for this case.  A client has no reason to probe for it: a server
 that sent LAYOUTRECALL4_DEVICEID has demonstrated knowledge of the
 value, and {{capability}} forbids sending that recall otherwise.
 
-
 The server MUST NOT send CB_LAYOUTRECALL with LAYOUTRECALL4_DEVICEID
 to a client that has not set EXCHGID4_FLAG_SUPP_RECALL_DEVICEID
 (see {{capability}}).  This satisfies the requirement in Section 6
@@ -464,10 +463,9 @@ This document has no IANA actions.
 # Acknowledgments
 {:numbered="false"}
 
-Trond Myklebust and Paul Saab were involved in the initial
-requirements for this functionality.
+Trond Myklebust and Paul Saab were involved in the initial requirements
+for this functionality.
 
-Chuck Lever provided early review feedback.
+Chuck Lever and Benjamin Coddington reviewed the document.
 
-Brian Pawlowski and Gorry Fairhurst helped guide
-this process.
+Brian Pawlowski and Gorry Fairhurst helped guide this process.
