@@ -294,13 +294,62 @@ The proposed extension is:
 ///   };
 ~~~
 
-Note that LAYOUT4_RET_REC_* constants are shared between
+## Completing a Deviceid-Scoped Recall {#completion}
+
+A deviceid-scoped recall is a bulk recall, in the same sense that
+LAYOUTRECALL4_FSID is: it names a scope rather than a file, and
+{{RFC8881}} Section 12.5.5.2.1.5 applies to it as written.  This
+document defines no exception to that section.
+
+{{RFC8881}} Section 18.44.3 requires a LAYOUTRETURN with a matching
+scope to complete a recall, even if all current layout ranges have
+been previously returned individually.  The scope here is the
+deviceid, and the LAYOUT4_RET_REC_* constants are shared between
 layoutrecall_type4 (used in CB_LAYOUTRECALL) and layoutreturn_type4
-(used in LAYOUTRETURN, see Section 18.44.1 of {{RFC8881}}).  Adding
-LAYOUT4_RET_REC_DEVICEID = 4 therefore also extends layoutreturn_type4
-with a LAYOUTRETURN4_DEVICEID value.  A client that receives a
-LAYOUTRETURN with lor_recalltype set to LAYOUTRETURN4_DEVICEID and
-does not recognise it MUST return NFS4ERR_UNION_NOTSUPP per {{RFC8178}}.
+(used in LAYOUTRETURN, see Section 18.44.1 of {{RFC8881}}), so adding
+LAYOUT4_RET_REC_DEVICEID = 4 gives layoutreturn_type4 a
+LAYOUTRETURN4_DEVICEID value as well.
+
+No new arm of layoutreturn4 is needed, and none may be added: that
+union carries a default case, which {{RFC8178}} Section 4.2 forbids
+extending.  None is needed because the aggregate returns carry no
+body.  {{RFC8881}} Section 18.44.3 identifies the file system of a
+LAYOUTRETURN4_FSID from the current filehandle, and uses no filehandle
+at all for LAYOUTRETURN4_ALL; LAYOUTRETURN4_DEVICEID is the same
+shape, and takes the default void arm.  Adding the enum value is
+permitted on its own: {{RFC8178}} Section 4.2 lists addition of new,
+previously unused values to existing enums among the allowed
+extensions.
+
+The recall being completed is identified by being the only one
+outstanding.  {{RFC8881}} Section 12.5.5.2.1.5 requires that a server
+not initiate a bulk recall while another recall is in progress or its
+LAYOUTRETURN is pending, so at most one deviceid-scoped recall is
+outstanding for a client at a time, and a void-bodied
+LAYOUTRETURN4_DEVICEID is unambiguous.
+
+An honoring client therefore completes the recall in one of two ways:
+
+- it returns the affected layouts, individually or otherwise, and then
+  sends a LAYOUTRETURN whose lr_returntype is LAYOUTRETURN4_DEVICEID;
+  or
+
+- it replies to the CB_LAYOUTRECALL with NFS4ERR_NOMATCHING_LAYOUT,
+  when it holds no layout referencing the deviceid and no valid
+  mapping for it ({{RFC8881}} Section 20.3.3).
+
+Once that LAYOUTRETURN is sent, the layout stateids for the returned
+layouts are freed, and the client MUST send LAYOUTGET to obtain a new
+layout stateid before using a layout for any of those files again.
+
+A server with no knowledge of LAYOUTRETURN4_DEVICEID returns
+NFS4ERR_BADXDR, or an RPC XDR decode error, as {{RFC8178}} Section
+4.4.3 describes for an unrecognised switch arm.  NFS4ERR_UNION_NOTSUPP
+is the answer of a responder that does know the arm, so it is not the
+error for this case.  A client has no reason to probe for it: a server
+that sent LAYOUTRECALL4_DEVICEID has demonstrated knowledge of the
+value, and {{capability}} forbids sending that recall otherwise.
+
 
 The server MUST NOT send CB_LAYOUTRECALL with LAYOUTRECALL4_DEVICEID
 to a client that has not set EXCHGID4_FLAG_SUPP_RECALL_DEVICEID
