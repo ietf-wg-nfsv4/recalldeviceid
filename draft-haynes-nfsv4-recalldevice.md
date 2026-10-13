@@ -218,8 +218,29 @@ CB_LAYOUTRECALL with a LAYOUTRECALL4_DEVICEID recall type.
 A server MUST NOT send a CB_LAYOUTRECALL with
 LAYOUTRECALL4_DEVICEID to a client that did not set
 EXCHGID4_FLAG_SUPP_RECALL_DEVICEID in its EXCHANGE_ID request.
-A server that does not wish to support this capability MAY
-ignore the flag.
+
+Two kinds of server must be distinguished here.  A server with no
+knowledge of EXCHGID4_FLAG_SUPP_RECALL_DEVICEID MUST reject the
+EXCHANGE_ID with NFS4ERR_INVAL, because {{RFC8881}} Section 18.35.3
+requires that of any undefined bit in eia_flags; it has no choice to
+make.  A server that knows the flag from this document but does not
+implement deviceid-scoped recall accepts the EXCHANGE_ID and simply
+never sends LAYOUTRECALL4_DEVICEID.
+
+A client therefore cannot assume that setting the flag is free.  It
+SHOULD probe as {{RFC8178}} Section 4.4.3 describes: send the
+EXCHANGE_ID with the flag set, and on NFS4ERR_INVAL retry without it.
+The client cannot learn why the first attempt failed, since
+EXCHANGE_ID returns NFS4ERR_INVAL for several other reasons, so it
+MUST treat any NFS4ERR_INVAL as grounds to retry without the flag
+rather than as a permanent failure.
+
+A server MUST NOT set EXCHGID4_FLAG_SUPP_RECALL_DEVICEID in eir_flags
+unless the client set it in eia_flags.  {{RFC8881}} Section 18.35.3
+permits a server to set a result bit the client did not request, but a
+client with no knowledge of this flag has no way to interpret it, and
+an implementation that validates eir_flags against the bits it knows
+will reject the reply.
 
 If the client does not set EXCHGID4_FLAG_SUPP_RECALL_DEVICEID,
 the server MAY fall back to recalling individual layouts via
