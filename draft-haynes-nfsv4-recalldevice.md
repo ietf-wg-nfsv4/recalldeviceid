@@ -449,10 +449,11 @@ Capability negotiation as defence in depth:
    EXCHGID4_FLAG_SUPP_RECALL_DEVICEID continues to receive only
    the layoutrecall_type4 values defined in {{RFC8881}}.  A server
    that sends LAYOUTRECALL4_DEVICEID to a client that did not
-   advertise support is in violation of Section 6 of {{RFC8178}};
-   clients that encounter such a violation MUST return
-   NFS4ERR_UNION_NOTSUPP and SHOULD log the server for operator
-   attention.
+   advertise support is in violation of Section 6 of {{RFC8178}}.
+   Such a client does not recognise the union arm, so it responds as
+   {{RFC8178}} Section 4.4.3 describes for that case, with
+   NFS4ERR_BADXDR or an RPC XDR decode error, and SHOULD log the
+   server for operator attention.
 
 # IANA Considerations
 
