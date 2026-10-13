@@ -145,7 +145,7 @@ per-file recall traffic is itself a scaling concern.
 ## Problem 2: Cleanly retiring a deviceid
 
 The metadata server can signal to clients that a deviceid no
-longer exists by setting NOTIFY4_DEVICEID_DELETE in the
+longer exists by setting NOTIFY_DEVICEID4_DELETE in the
 CB_NOTIFY_DEVICEID callback (see Section 20.12 of {{RFC8881}}).
 This flag cannot be set while any layout still references the
 deviceid: once a delete is announced, a client cannot have
@@ -173,7 +173,7 @@ are:
 A deviceid-scoped recall provides the missing surgical option:
 the metadata server recalls exactly the layouts referencing the
 to-be-retired deviceid, waits for client acknowledgement, and
-then sends CB_NOTIFY_DEVICEID with NOTIFY4_DEVICEID_DELETE.
+then sends CB_NOTIFY_DEVICEID with NOTIFY_DEVICEID4_DELETE.
 The deviceid is retired without disturbing layouts that
 reference other deviceids.
 
